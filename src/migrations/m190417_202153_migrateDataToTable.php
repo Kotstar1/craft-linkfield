@@ -19,6 +19,10 @@ use verbb\supertable\fields\SuperTableField;
  */
 class m190417_202153_migrateDataToTable extends Migration
 {
+
+  const TYPE_SITE = 'site';
+  const TYPE_TEL = 'tel';
+
   /**
    * @inheritdoc
    */
@@ -171,16 +175,48 @@ class m190417_202153_migrateDataToTable extends Migration
 
       $valueCondition = is_numeric($value) && !empty($value);
 
-      $insertRows[] = [
-        $row['elementId'],                          // elementId
-        $row['siteId'],                             // siteId
-        $field->id,                                 // fieldId
-        $valueCondition ? $value : null,            // linkedId
-        $valueCondition ? $row['siteId'] : null,    // linkedSiteId
-        $type,                                      // type
-        $valueCondition ? null : $value,            // linkedUrl
-        Json::encode($payload)                      // payload
-      ];
+      $insertRow = [];
+
+      switch ($type) {
+        case self::TYPE_SITE:
+          $insertRow = [
+            $row['elementId'],                          // elementId
+            $row['siteId'],                             // siteId
+            $field->id,                                 // fieldId
+            null,                                       // linkedId
+            $valueCondition ? $value : null,            // linkedSiteId
+            $type,                                      // type
+            null,                                       // linkedUrl
+            Json::encode($payload)                      // payload
+          ];
+          break;
+        case self::TYPE_TEL:
+          $insertRow = [
+            $row['elementId'],                          // elementId
+            $row['siteId'],                             // siteId
+            $field->id,                                 // fieldId
+            null,                                       // linkedId
+            null,                                       // linkedSiteId
+            $type,                                      // type
+            !empty($value) ? $value : null,             // linkedUrl
+            Json::encode($payload)                      // payload
+          ];
+          break;
+        default:
+          $insertRow = [
+            $row['elementId'],                          // elementId
+            $row['siteId'],                             // siteId
+            $field->id,                                 // fieldId
+            $valueCondition ? $value : null,            // linkedId
+            $valueCondition ? $row['siteId'] : null,    // linkedSiteId
+            $type,                                      // type
+            is_numeric($value) ? null : $value,         // linkedUrl
+            Json::encode($payload)                      // payload
+          ];
+          break;
+      }
+
+      $insertRows[] = $insertRow;
 
       if (count($insertRows) > 100) {
         $writeRows($insertRows);
